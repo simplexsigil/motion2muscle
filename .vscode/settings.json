@@ -1,0 +1,10 @@
+{
+    "files.exclude": {
+        "**/dataset/AMARV": true,
+        "**/dataset/AMASS": true
+    },
+    "search.exclude": {
+        "**/dataset/AMARV": true,
+        "**/dataset/AMASS": true
+    }
+}

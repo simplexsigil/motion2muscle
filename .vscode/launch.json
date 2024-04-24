@@ -1,0 +1,137 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Train MS2",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_vq_ms2.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+              "--batch-size", "128",
+              "--lr", "2e-4",
+              "--total-iter", "300000",
+              "--lr-scheduler", "200000",
+              "--nb-code", "402",
+              "--down-t", "2",
+              "--depth", "3",
+              "--dilation-growth-rate", "3",
+              "--out-dir", "output/test1",
+              "--dataname", "mint",
+              "--vq-act", "relu",
+              "--vq_dec_emb_width", "8",
+              "--quantizer", "ema_reset",
+              "--loss-vel", "0.5",
+              "--recons-loss", "l1_smooth",
+              "--exp-name", "VQVAE",
+              "--print-iter", "10",
+              "--eval-iter", "1000",
+              "--window-size", "64",
+              "--vq_dec_emb_width", "402"
+            ],
+            "env": {
+              "MINT_DATA": "/lsdf/data/activity/MuscleSim/musclesim_dataset",
+              "MOTION_DATA": "/lsdf/users/dschneider-kf3609/workspace/HumanML3D/HumanML3D",
+              "BABEL_DATA": "/lsdf/data/activity/BABEL/babel_v1-0_release"
+            }
+          },
+          {
+            "name": "Eval MS",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ms_eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+              "--batch-size", "128",
+              "--eval-batch-size", "351",
+              "--lr", "2e-4",
+              "--total-iter", "300000",
+              "--lr-scheduler", "200000",
+              "--nb-code", "402",
+              "--down-t", "2",
+              "--depth", "3",
+              "--dilation-growth-rate", "3",
+              "--out-dir", "output/exp_transformer8/muscle_activation",
+              "--dataname", "mint",
+              "--vq-act", "relu",
+              "--vq_dec_emb_width", "8",
+              "--quantizer", "ema_reset",
+              "--loss-vel", "0.5",
+              "--recons-loss", "l1_smooth",
+              "--exp-name", "VQVAE",
+              "--print-iter", "10",
+              "--eval-iter", "100",
+              "--resume-pth", "output/exp_transformer8/transformer/net_best_fid.pth",
+              "--vq_dec_emb_width", "402",
+              "--window-size", "64",
+              "--width", "128"
+            ],
+            "env": {
+              "MINT_DATA": "/lsdf/data/activity/MuscleSim/musclesim_dataset",
+              "MOTION_DATA": "/lsdf/users/dschneider-kf3609/workspace/HumanML3D/HumanML3D",
+              "BABEL_DATA": "/lsdf/data/activity/BABEL/babel_v1-0_release"
+            }
+          },
+          {
+            "name": "Eval MS 402",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/ms_eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+              "--batch-size", "128",
+              "--eval-batch-size", "351",
+              "--lr", "2e-4",
+              "--total-iter", "300000",
+              "--lr-scheduler", "200000",
+              "--nb-code", "512",
+              "--down-t", "2",
+              "--depth", "3",
+              "--dilation-growth-rate", "3",
+              "--out-dir", "output/musint_402_exp_6/VQVAE/reps",
+              "--dataname", "mint",
+              "--vq-act", "relu",
+              "--vq_dec_emb_width", "402",
+              "--quantizer", "ema_reset",
+              "--loss-vel", "0.5",
+              "--recons-loss", "l1_smooth",
+              "--exp-name", "VQVAE",
+              "--print-iter", "10",
+              "--eval-iter", "100",
+              "--resume-pth", "output/exp6/VQVAE/net_best_fid.pth"
+            ],
+            "env": {
+              "MINT_DATA": "/lsdf/data/activity/MuscleSim/musclesim_dataset",
+              "MOTION_DATA": "/lsdf/users/dschneider-kf3609/workspace/HumanML3D/HumanML3D",
+              "BABEL_DATA": "/lsdf/data/activity/BABEL/babel_v1-0_release"
+            }
+          },
+          {
+            "name": "Test MinT Dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dataset/dataset_MS.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+            ]
+          }
+    ]
+}

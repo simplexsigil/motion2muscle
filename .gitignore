@@ -1,0 +1,9 @@
+*.pth
+*.prof
+*.npy
+*.pyc
+*.pkl
+events*
+*.log
+*.tar
+/output
