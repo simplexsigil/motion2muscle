@@ -73,8 +73,6 @@ def test_vqvae(
             muscle_act_pred = net(motion[i : i + 1])
             cur_muscle_act_gt = muscle_act_gt[i : i + 1]
 
-            # code = net.encode(motion[i : i + 1])
-
             if savenpy:
                 np.save(
                     os.path.join(out_dir, name[i].replace("/", "__I__") + "_gt.npy"),

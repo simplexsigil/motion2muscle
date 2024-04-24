@@ -28,7 +28,6 @@ class MotionToMuscleModel(nn.Module):
     def __init__(self,
                  input_width=263,
                  output_width=402,
-                 stride_t=2,
                  width=128,
                  nhead=16,
                  num_transformer_layers=1):
@@ -36,7 +35,6 @@ class MotionToMuscleModel(nn.Module):
 
         # Convolution and ResNet blocks
         blocks = []
-        filter_t, pad_t = stride_t * 2, stride_t // 2
         blocks.append(nn.Conv1d(input_width, width, 3, 1, 1))
         blocks.append(nn.ReLU())
 

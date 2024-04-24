@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class ReConsLoss(nn.Module):
+class Loss(nn.Module):
     def __init__(self, recons_loss, nb_joints):
-        super(ReConsLoss, self).__init__()
+        super(Loss, self).__init__()
 
         if recons_loss == "l1":
             self.Loss = torch.nn.L1Loss()
@@ -12,6 +12,8 @@ class ReConsLoss(nn.Module):
             self.Loss = torch.nn.MSELoss()
         elif recons_loss == "l1_smooth":
             self.Loss = torch.nn.SmoothL1Loss()
+        elif recons_loss == "huber":
+            self.Loss = torch.nn.HuberLoss()
 
         # 4 global motion associated to root
         # 12 local motion (3 local xyz, 3 vel xyz, 6 rot6d)

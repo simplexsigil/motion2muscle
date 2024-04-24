@@ -36,7 +36,6 @@ def initialize_model_and_optimizer(args, logger):
     net = motion_to_muscle.MotionToMuscleModel(
         input_width,
         output_width,
-        args.stride_t,
         args.width,
     )
 
@@ -55,7 +54,7 @@ def initialize_model_and_optimizer(args, logger):
 def warm_up_training(args, logger, writer, net, optimizer, train_loader_iter, global_metrics, Loss):
 
     iter_metrics = {
-        "avg_recons": 0.0,
+        "avg_loss": 0.0,
         "avg_data_time": 0.0,
         "avg_cuda_time": 0.0,
         "avg_forward_time": 0.0,
@@ -99,7 +98,7 @@ def warm_up_training(args, logger, writer, net, optimizer, train_loader_iter, gl
         iter_metrics["avg_backward_time"] += time.time() - backward_start_time
 
         # Accumulate metrics for logging
-        iter_metrics["avg_recons"] += loss.item()
+        iter_metrics["avg_loss"] += loss.item()
 
         # Log periodically
         if nb_iter % args.print_iter == 0 or nb_iter == args.warm_up_iter:
@@ -126,9 +125,8 @@ def main_training_loop(
     args, logger, writer, net, optimizer, scheduler, train_loader_iter, val_loader, global_metrics, Loss
 ):
     iter_metrics = {
-        "avg_recons": 0.0,
+        "avg_loss": 0.0,
         "avg_perplexity": 0.0,
-        "avg_commit": 0.0,
         "avg_data_time": 0.0,
         "avg_cuda_time": 0.0,
         "avg_forward_time": 0.0,
@@ -186,7 +184,7 @@ def main_training_loop(
             iter_metrics["avg_backward_time"] += time.time() - backward_start_time
 
             # Accumulate metrics for logging
-            iter_metrics["avg_recons"] += loss.item()
+            iter_metrics["avg_loss"] += loss.item()
 
             # Log periodically
             if nb_iter % args.print_iter == 0:
@@ -250,7 +248,7 @@ def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
 def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logger, writer):
     logger.info("Performing evaluation at Iteration {}".format(nb_iter))
 
-    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = (
+    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, best_loss, writer, logger = (
         eval_trans.evaluation_vqvae(
             out_dir=args.out_dir,
             data_loader=val_loader,
@@ -266,6 +264,7 @@ def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logge
             best_top2=global_metrics["best_top2"],
             best_top3=global_metrics["best_top3"],
             best_matching=global_metrics["best_matching"],
+            best_loss=global_metrics["best_loss"],
             args=args,
         )
     )
@@ -277,13 +276,14 @@ def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logge
     global_metrics["best_top2"] = best_top2
     global_metrics["best_top3"] = best_top3
     global_metrics["best_matching"] = best_matching
+    global_metrics["best_loss"] = best_loss
 
 
 def log_stats_with_timing(nb_iter, iter_metrics, logger, writer, prefix="Train"):
 
     logger.info(
         f"{prefix}. Iter {nb_iter} | "
-        f"Recons {iter_metrics['avg_recons']:.3f} | "
+        f"Loss {iter_metrics['avg_loss']:.3f} | "
         + (f"LR {iter_metrics['avg_lr']:.3} s | " if "avg_lr" in iter_metrics else "")
         + f"DT {iter_metrics['avg_data_time']:.3} s | "
         f"CT {iter_metrics['avg_cuda_time']:.3} s | "
@@ -299,7 +299,7 @@ def log_stats_with_timing(nb_iter, iter_metrics, logger, writer, prefix="Train")
 
 def log_iteration_stats_with_timing(
     nb_iter,
-    avg_recons,
+    avg_loss,
     avg_perplexity,
     avg_commit,
     avg_data_time,
@@ -310,15 +310,14 @@ def log_iteration_stats_with_timing(
     logger,
     writer,
 ):
-    avg_recons /= print_iter
+    avg_loss /= print_iter
     avg_perplexity /= print_iter
-    avg_commit /= print_iter
     avg_data_time /= print_iter
     avg_forward_time /= print_iter
     avg_backward_time /= print_iter
     iteration_time /= print_iter
     logger.info(
-        f"Train. Iter {nb_iter} : \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f} \t Data Time {avg_data_time:.5f} s \t Forward Time {avg_forward_time:.5f} s \t Backward Time {avg_backward_time:.5f} s \t Iteration Time {iteration_time:.5f} s"
+        f"Train. Iter {nb_iter} : \t PPL. {avg_perplexity:.2f} \t Loss.  {avg_loss:.5f} \t Data Time {avg_data_time:.5f} s \t Forward Time {avg_forward_time:.5f} s \t Backward Time {avg_backward_time:.5f} s \t Iteration Time {iteration_time:.5f} s"
     )
     writer.add_scalar("Timing/Data_Loading", avg_data_time, nb_iter)
     writer.add_scalar("Timing/Forward_Pass", avg_forward_time, nb_iter)
@@ -370,7 +369,7 @@ def main():
     train_loader, val_loader, train_loader_iter = prepare_dataloaders(args)
 
     # Define the loss function
-    Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints)
+    Loss = losses.Loss(args.recons_loss, args.nb_joints)
 
     global_metrics = {  # TODO: Load on training restart.
         "best_fid": 1000,
@@ -380,6 +379,7 @@ def main():
         "best_top2": 0,
         "best_top3": 0,
         "best_matching": 1000,
+        "best_loss": 1000,
         "start_time": time.time(),
     }
 

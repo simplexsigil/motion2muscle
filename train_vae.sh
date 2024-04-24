@@ -6,13 +6,16 @@ export BABEL_DATA="/lsdf/data/activity/BABEL/babel_v1-0_release"
 
 export CUDA_VISIBLE_DEVICES=1
 
-python3 train_vq_ms2.py \
+python3 train_vq_ms.py \
 --batch-size 128 \
 --lr 2e-4 \
 --total-iter 300000 \
 --lr-scheduler 200000 \
+--nb-code 402 \
+--down-t 2 \
 --depth 3 \
---out-dir output/exp_transformer10 \
+--dilation-growth-rate 3 \
+--out-dir output/exp_transformer8 \
 --dataname mint \
 --vq-act relu \
 --quantizer ema_reset \
@@ -22,5 +25,5 @@ python3 train_vq_ms2.py \
 --print-iter 50 \
 --eval-iter 1000 \
 --window-size 64 \
---width 64 \
+--vq_dec_emb_width 402 \
 --muscle_subset MUSINT_402

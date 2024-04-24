@@ -9,32 +9,15 @@ import models.vqvae as vqvae
 import utils.losses as losses
 import options.option_vq as option_vq
 import utils.utils_model as utils_model
-from dataset import dataset_MS, dataset_VQ, dataset_TM_eval
+from dataset import dataset_MS
 import utils.eval_trans as eval_trans
-from options.get_eval_option import get_opt
-from models.evaluator_wrapper import EvaluatorModelWrapper
 import warnings
-from tqdm import tqdm
 from utils.profiler_utils import ProfilerContext
 
 import time
 
 warnings.filterwarnings("ignore")
-from utils.word_vectorizer import WordVectorizer
 
-
-def configure_dataset(args, logger):
-    w_vectorizer = WordVectorizer("./glove", "our_vab")
-    if args.dataname == "kit":
-        dataset_opt_path = "checkpoints/kit/Comp_v6_KLD005/opt.txt"
-        args.nb_joints = 21
-    else:
-        dataset_opt_path = "checkpoints/t2m/Comp_v6_KLD005/opt.txt"
-        args.nb_joints = 22
-    logger.info(f"Training on {args.dataname}, motions are with {args.nb_joints} joints")
-    wrapper_opt = get_opt(dataset_opt_path, torch.device("cuda"))
-    eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
-    return w_vectorizer, wrapper_opt, eval_wrapper
 
 
 def initialize(args):
@@ -281,7 +264,7 @@ def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
 def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logger, writer):
     logger.info("Performing evaluation at Iteration {}".format(nb_iter))
 
-    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = (
+    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, best_loss, writer, logger = (
         eval_trans.evaluation_vqvae(
             out_dir=args.out_dir,
             data_loader=val_loader,
@@ -297,6 +280,7 @@ def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logge
             best_top2=global_metrics["best_top2"],
             best_top3=global_metrics["best_top3"],
             best_matching=global_metrics["best_matching"],
+            best_loss=global_metrics["best_loss"],
             args=args,
         )
     )
@@ -308,6 +292,8 @@ def validate_and_log(args, nb_iter, net, Loss, val_loader, global_metrics, logge
     global_metrics["best_top2"] = best_top2
     global_metrics["best_top3"] = best_top3
     global_metrics["best_matching"] = best_matching
+    global_metrics["best_loss"] = best_loss
+
 
 
 def log_stats_with_timing(nb_iter, iter_metrics, logger, writer, prefix="Train"):
@@ -359,14 +345,13 @@ def log_iteration_stats_with_timing(
     writer.add_scalar("Timing/Total_Iteration", iteration_time, nb_iter)
 
 
-def prepare_dataloaders(args, w_vectorizer):
+def prepare_dataloaders(args):
     train_loader = dataset_MS.DATALoader(
         args.dataname,
         args.batch_size,
         mode="train",
         window_size=args.window_size,
         unit_length=2**args.down_t,
-        w_vectorizer=w_vectorizer,
         num_workers=args.num_workers,
         use_profiling=args.profiling,
     )
@@ -378,7 +363,6 @@ def prepare_dataloaders(args, w_vectorizer):
         window_size=args.window_size,
         unit_length=2**args.down_t,
         label_required=True,  # Assuming validation requires labels
-        w_vectorizer=w_vectorizer,
         num_workers=args.num_workers,
         use_profiling=args.profiling,
     )
@@ -391,23 +375,21 @@ def prepare_dataloaders(args, w_vectorizer):
 def main():
     # Parse arguments
     args = option_vq.get_args_parser()
+    args.nb_joints = 21
 
     ProfilerContext.is_profiling_active = args.profiling
 
     # Initialize environment, logging, and writer
     args, logger, writer = initialize(args)
 
-    # Configure dataset and related components
-    w_vectorizer, wrapper_opt, eval_wrapper = configure_dataset(args, logger)
-
     # Initialize the model, optimizer, and scheduler
     net, optimizer, scheduler = initialize_model_and_optimizer(args, logger)
 
     # Prepare the data loaders
-    train_loader, val_loader, train_loader_iter = prepare_dataloaders(args, w_vectorizer)
+    train_loader, val_loader, train_loader_iter = prepare_dataloaders(args)
 
     # Define the loss function
-    Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints)
+    Loss = losses.Loss(args.recons_loss, args.nb_joints)
 
     global_metrics = {  # TODO: Load on training restart.
         "best_fid": 1000,
@@ -417,6 +399,7 @@ def main():
         "best_top2": 0,
         "best_top3": 0,
         "best_matching": 1000,
+        "best_loss": 1000,
         "start_time": time.time(),
     }
 
