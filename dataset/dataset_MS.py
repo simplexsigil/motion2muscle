@@ -28,6 +28,18 @@ torch.Tensor.__repr__ = lambda self: f"{self.shape}_{normal_repr(self)}"
 
 DO_PROFILING = False
 
+def find_strings(data):
+    strings = []
+
+    def recurse(item):
+        if isinstance(item, (list, tuple)):
+            for sub_item in item:
+                recurse(sub_item)
+        elif isinstance(item, str):
+            strings.append(item)
+
+    recurse(data)
+    return strings
 
 class MSMotionDataset(data.Dataset):
 
@@ -99,6 +111,8 @@ class MSMotionDataset(data.Dataset):
             os.path.join(self.babel_root, "train.json"),
             os.path.join(self.babel_root, "val.json"),
             os.path.join(self.babel_root, "test.json"),
+            os.path.join(self.babel_root, "extra_train.json"),
+            os.path.join(self.babel_root, "extra_val.json"),
         ]
 
         self.babel_dataset = BabelDataset.from_datasets([BabelDataset.from_json_file(bp) for bp in babel_paths])
@@ -118,6 +132,30 @@ class MSMotionDataset(data.Dataset):
 
         for idx in tqdm(range(len(self.mint_dataset))):
             id_name = self.mint_dataset.path_ids[idx]
+
+            exclude_motion = False # TODO make this a parameter
+
+            if exclude_motion:
+
+
+                data_path = self.mint_dataset[idx].data_path
+
+                babel_info = self.babel_dataset.by_feat_p(data_path, raise_missing=False)
+
+                if babel_info is None:
+                    logger.info(f"Excluding motion for {id_name}")
+                    index_removal_ids.append(id_name)
+                    continue
+
+                babel_labels = list(set(find_strings(babel_info.clip_actions())))
+                babel_labels.extend(babel_info.sequence_actions()[2])
+
+
+                # Exclude motion if it has no Babel label or has the Babel label "jumping jack"
+                if babel_labels == [] or "jumping jacks" in babel_labels:
+                    logger.info(f"Excluding motion for {id_name}")
+                    index_removal_ids.append(id_name)
+                    continue
 
             if self.mode == "train":
                 if any(id_name in split_id for split_id in non_train_ids):
@@ -224,7 +262,7 @@ class MSMotionDataset(data.Dataset):
             mint_data = self.mint_dataset[idx]
             try:
                 muscle_df = mint_data.muscle_activations
-                valid_timestamps = self.get_valid_timestamps_v2(muscle_df)
+                valid_timestamps = self.get_valid_timestamps_v2(muscle_df, window_size_seconds=self.window_size / self.motion_fps)
 
                 # Ensure non-overlapping windows by only adding timestamps spaced by at least the window size
                 last_ts = 0
@@ -320,7 +358,7 @@ class MSMotionDataset(data.Dataset):
         sample["muscle_activation"] = trim_mint_dataframe_v2(
             df=muscle_df,
             time_window=(window_start_timestamp, window_end_timestamp),
-            target_frame_count=64,
+            target_frame_count=28,
         )
 
         # get corresponding babel meta from tran, val, test datasets if it exists, else None.
@@ -370,7 +408,7 @@ class MSMotionDataset(data.Dataset):
         - None if no valid ts exists
         """
         try:
-            valid_timestamps = self.get_valid_timestamps_v2(muscle_activations, max_frame_gap=max_frame_gap)
+            valid_timestamps = self.get_valid_timestamps_v2(muscle_activations, max_frame_gap=max_frame_gap, window_size_seconds=self.window_size / self.motion_fps)
         except ValueError:
             return None
 

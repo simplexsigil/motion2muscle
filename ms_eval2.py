@@ -125,7 +125,7 @@ all_loader = dataset_MS.DATALoader(
 test_loader = dataset_MS.DATALoader(
     args.dataname,
     128,
-    mode="train",
+    mode="val",
     window_size=args.window_size,
     unit_length=2**args.down_t,
 )

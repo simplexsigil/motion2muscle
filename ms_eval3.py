@@ -5,11 +5,15 @@ import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-import models.motion_to_muscle_act as motion_to_muscle
+import models.vqvae as vqvae
+import utils.losses as losses
 import options.option_vq as option_vq
+import utils.utils_model as utils_model
 from dataset import dataset_MS
 import utils.eval_trans as eval_trans
+from options.get_eval_option import get_opt
 import warnings
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
@@ -71,7 +75,7 @@ def test_vqvae(
             )
             np.save(
                 os.path.join(out_dir, name[i].replace("/", "__I__") + "_" + str(i) + "_pred.npy"),
-                muscle_act_pred[:].detach().cpu().numpy(),
+                muscle_act_pred[0][:].detach().cpu().numpy(),
             )
 
             # print(f"Saved to {os.path.join(out_dir, name[i].replace("/", "__I__") + "_" + i + "_pred.npy")}")
@@ -79,7 +83,7 @@ def test_vqvae(
             # Append metadata for the current batch item
             metadata.append({"name": name[i], "gt_name": name[i].replace("/", "__I__") + "_" + str(i) + "_gt.npy", "pred_name": name[i].replace("/", "__I__") + "_" + str(i) + "_pred.npy", "time_start": time_start[i]})
 
-            pred_muscle_eval[i : i + 1] = muscle_act_pred
+            pred_muscle_eval[i : i + 1] = muscle_act_pred[0]
 
         muscle_pred_list.append(pred_muscle_eval)
         muscle_ann_list.append(muscle_act_gt)
@@ -140,14 +144,9 @@ logger = logging.getLogger()
 logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
 
 
-# w_vectorizer = WordVectorizer("./glove", "our_vab")
-
 args.nb_joints = 22
 
 logger.info(f"Training on {args.dataname}, motions are with {args.nb_joints} joints")
-
-# wrapper_opt = get_opt(dataset_opt_path, torch.device("cuda"))
-# eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
 """
 all_loader = dataset_MS.DATALoader(
@@ -169,13 +168,18 @@ test_loader = dataset_MS.DATALoader(
 )
 
 ##### ---- Network ---- #####
-input_width = 263
-output_width = 402
-net = motion_to_muscle.MotionToMuscleModel(
-    input_width,
-    output_width,
+net = vqvae.HumanVQVAE(
+    args,  ## use args to define different parameters in different quantizers
+    args.nb_code,
+    args.code_dim,
+    args.output_emb_width,
+    args.down_t,
+    args.stride_t,
     args.width,
-    num_transformer_layers=args.transformer_layer,
+    args.depth,
+    args.dilation_growth_rate,
+    args.vq_act,
+    args.vq_norm,
 )
 
 if args.resume_pth:
@@ -209,7 +213,7 @@ with torch.no_grad():
             test_loader,
             net,
             logger,
-            savenpy=True,
+            savenpy=(i == 0),
         )
         fid.append(best_fid)
         div.append(best_div)

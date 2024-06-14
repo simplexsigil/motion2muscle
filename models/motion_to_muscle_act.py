@@ -33,7 +33,6 @@ class MotionToMuscleModel(nn.Module):
                  num_transformer_layers=1):
         super().__init__()
 
-        # Convolution and ResNet blocks
         blocks = []
         blocks.append(nn.Conv1d(input_width, width, 3, 1, 1))
         blocks.append(nn.ReLU())

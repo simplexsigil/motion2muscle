@@ -18,6 +18,7 @@ def get_args_parser(parse=True):
     parser.add_argument("--muscle_subset", type=str, default="LAI_ARNOLD_LOWER_BODY_8", help="Muscle Subset")
     parser.add_argument("--num_workers", default=8, type=int, help="Dataloader workers.")
     parser.add_argument("--profiling", action="store_true", help="Enable profiling for the application")
+    parser.add_argument("--data-ratio", default=1.0, type=float, help="Ratio of training data to use")
 
     ## optimization
     parser.add_argument("--total-iter", default=200000, type=int, help="number of total iterations to run")
@@ -32,6 +33,15 @@ def get_args_parser(parse=True):
     parser.add_argument("--commit", type=float, default=0.02, help="hyper-parameter for the commitment loss")
     parser.add_argument("--loss-vel", type=float, default=0.1, help="hyper-parameter for the velocity loss")
     parser.add_argument("--recons-loss", type=str, default="l2", help="reconstruction loss")
+    parser.add_argument(
+        "--train-mode", type=str, default="normal", choices=["normal", "finetune"], help="training mode"
+    )
+    parser.add_argument(
+        "--fine-layers",
+        nargs="+",
+        default=["model.0", "out_model.0", "transformer_encoder.layers.0"],
+        help="List of layer name substrings to fine-tune",
+    )
 
     ## vqvae arch
     parser.add_argument("--code-dim", type=int, default=512, help="embedding dimension")
@@ -76,5 +86,7 @@ def get_args_parser(parse=True):
 
     parser.add_argument("--vis-gt", action="store_true", help="whether visualize GT motions")
     parser.add_argument("--nb-vis", default=20, type=int, help="nb of visualizations")
+
+    parser.add_argument("--transformer_layer", default=1, type=int, help="number of layer for the transformer")
 
     return parser.parse_args() if parse else parser

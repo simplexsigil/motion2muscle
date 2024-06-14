@@ -1,3 +1,6 @@
+.vscode
+*.png
+*.svg
 *.pth
 *.prof
 *.npy

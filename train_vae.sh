@@ -15,15 +15,15 @@ python3 train_vq_ms.py \
 --down-t 2 \
 --depth 3 \
 --dilation-growth-rate 3 \
---out-dir output/exp_transformer8 \
+--out-dir output/vqvae \
 --dataname mint \
 --vq-act relu \
 --quantizer ema_reset \
 --loss-vel 0.5 \
 --recons-loss l1_smooth \
---exp-name transformer \
+--exp-name vqvae \
 --print-iter 50 \
 --eval-iter 1000 \
---window-size 64 \
+--window-size 28 \
 --vq_dec_emb_width 402 \
 --muscle_subset MUSINT_402

@@ -9,7 +9,7 @@ import models.motion_to_muscle_act as motion_to_muscle
 import utils.losses as losses
 import options.option_vq as option_vq
 import utils.utils_model as utils_model
-from dataset import dataset_MS
+from dataset import dataset_MIA
 import utils.eval_trans2 as eval_trans
 import warnings
 from utils.profiler_utils import ProfilerContext
@@ -17,6 +17,24 @@ from utils.profiler_utils import ProfilerContext
 import time
 
 warnings.filterwarnings("ignore")
+
+print(f"Num threads: {torch.get_num_threads()}")
+torch.set_num_threads(os.cpu_count())
+print(f"Num threads: {torch.get_num_threads()}")
+
+
+def set_trainable_params(net, layer_name_substrings):
+    """
+    Sets the requires_grad attribute of the parameters in net to False,
+    except for those whose name contains any of the specified substrings.
+
+    Args:
+        net: The neural network model.
+        layer_name_substrings: A list of substrings. Parameters whose names contain
+                               any of these substrings will have requires_grad set to True.
+    """
+    for name, param in net.named_parameters():
+        param.requires_grad = any(substr in name for substr in layer_name_substrings)
 
 
 def initialize(args):
@@ -32,7 +50,7 @@ def initialize(args):
 
 def initialize_model_and_optimizer(args, logger):
     input_width = 263
-    output_width = 402
+    output_width = 8
     net = motion_to_muscle.MotionToMuscleModel(
         input_width,
         output_width,
@@ -43,10 +61,40 @@ def initialize_model_and_optimizer(args, logger):
     if args.resume_pth:
         logger.info(f"Loading checkpoint from {args.resume_pth}")
         ckpt = torch.load(args.resume_pth, map_location="cpu")
-        net.load_state_dict(ckpt["net"], strict=True)
+        try:
+            net.load_state_dict(ckpt["net"], strict=True)
+        except BaseException as e:
+            del ckpt["net"]["out_model.0.weight"]
+            del ckpt["net"]["out_model.0.bias"]
+
+            res = net.load_state_dict(ckpt["net"], strict=False)
+            print(res)
     net.train().cuda()
 
-    optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
+    # Calculate total parameters
+    total_params = sum(p.numel() for p in net.parameters())
+
+    if args.train_mode == "finetune":
+        set_trainable_params(net, args.fine_layers)
+
+    trainable_params = [param for param in net.parameters() if param.requires_grad]
+
+    num_trainable_params = sum(p.numel() for p in trainable_params)
+
+    # Calculate the ratio
+    trainable_ratio = num_trainable_params / total_params
+
+    print(f"Total parameters: {total_params:,}")
+    print(f"Number of trainable parameters: {num_trainable_params:,}")
+    print(f"Ratio of trainable parameters: {trainable_ratio:.2%}")
+
+    optimizer = optim.AdamW(
+        trainable_params,
+        lr=args.lr,
+        betas=(0.9, 0.99),
+        weight_decay=args.weight_decay,
+    )
+
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_scheduler, gamma=args.gamma)
 
     return net, optimizer, scheduler
@@ -327,28 +375,20 @@ def log_iteration_stats_with_timing(
 
 
 def prepare_dataloaders(args):
-    train_loader = dataset_MS.DATALoader(
+    train_loader = dataset_MIA.MIADATALoader(
         args.dataname,
         args.batch_size,
         mode="train",
-        window_size=args.window_size,
-        unit_length=2**args.down_t,
         num_workers=args.num_workers,
-        use_profiling=args.profiling,
+        window_size=args.window_size,
+        data_ratio=args.data_ratio,
     )
 
-    val_loader = dataset_MS.DATALoader(
-        args.dataname,
-        args.batch_size,  # You might want to make this a command-line argument
-        mode="val",
-        window_size=args.window_size,
-        unit_length=2**args.down_t,
-        label_required=True,  # Assuming validation requires labels
-        num_workers=args.num_workers,
-        use_profiling=args.profiling,
+    val_loader = dataset_MIA.MIADATALoader(
+        args.dataname, args.batch_size, mode="val", num_workers=args.num_workers, window_size=args.window_size
     )
 
-    train_loader_iter = dataset_MS.cycle(train_loader)
+    train_loader_iter = dataset_MIA.cycle(train_loader)
 
     return train_loader, val_loader, train_loader_iter
 
