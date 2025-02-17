@@ -21,11 +21,11 @@ def get_args_parser(parse=True):
     parser.add_argument("--data-ratio", default=1.0, type=float, help="Ratio of training data to use")
 
     ## optimization
-    parser.add_argument("--total-iter", default=200000, type=int, help="number of total iterations to run")
+    parser.add_argument("--total-iter", default=300000, type=int, help="number of total iterations to run")
     parser.add_argument("--warm-up-iter", default=1000, type=int, help="number of total iterations for warmup")
     parser.add_argument("--lr", default=2e-4, type=float, help="max learning rate")
     parser.add_argument(
-        "--lr-scheduler", default=[50000, 400000], nargs="+", type=int, help="learning rate schedule (iterations)"
+        "--lr-scheduler", default=[200000], nargs="+", type=int, help="learning rate schedule (iterations)"
     )
     parser.add_argument("--gamma", default=0.05, type=float, help="learning rate decay")
 
@@ -44,12 +44,13 @@ def get_args_parser(parse=True):
     )
 
     ## vqvae arch
+    parser.add_argument("--model", type=str, default=None, help="model architecture")
     parser.add_argument("--code-dim", type=int, default=512, help="embedding dimension")
     parser.add_argument("--nb-code", type=int, default=512, help="nb of embedding")
     parser.add_argument("--mu", type=float, default=0.99, help="exponential moving average to update the codebook")
     parser.add_argument("--down-t", type=int, default=2, help="downsampling rate")
     parser.add_argument("--stride-t", type=int, default=2, help="stride size")
-    parser.add_argument("--width", type=int, default=512, help="width of the network")
+    parser.add_argument("--width", type=int, default=256, help="width of the network")
     parser.add_argument("--depth", type=int, default=3, help="depth of the network")
     parser.add_argument("--dilation-growth-rate", type=int, default=3, help="dilation growth rate")
     parser.add_argument("--output-emb-width", type=int, default=512, help="output embedding width")
@@ -87,6 +88,7 @@ def get_args_parser(parse=True):
     parser.add_argument("--vis-gt", action="store_true", help="whether visualize GT motions")
     parser.add_argument("--nb-vis", default=20, type=int, help="nb of visualizations")
 
-    parser.add_argument("--transformer_layer", default=1, type=int, help="number of layer for the transformer")
+    parser.add_argument("--transformer_layer", default=16, type=int, help="number of layer for the transformer")
+    parser.add_argument("--num_layers", default=8, type=int, help="number of layer for the transformer")
 
     return parser.parse_args() if parse else parser

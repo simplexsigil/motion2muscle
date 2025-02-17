@@ -705,7 +705,7 @@ def MIADATALoader(dataset_name, batch_size, mode="train", num_workers=8, window_
         num_workers=num_workers,
         prefetch_factor=2,
         collate_fn=collate_fn,
-        drop_last=True,
+        drop_last=True if mode == "train" else False,
         sampler=sampler,
     )
 
